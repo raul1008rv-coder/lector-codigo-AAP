@@ -1,0 +1,65 @@
+====================================================================
+ LECTOR AAP — CÓMO OBTENER EL APK SIN INSTALAR NADA EN TU PC
+====================================================================
+
+Tu PC del trabajo no puede instalar programas. No hay problema: el APK lo
+compila un servidor gratuito en la nube (GitHub Actions) y tú solo descargas
+el archivo .apk terminado desde el navegador. NO necesitas alojar nada ni dejar
+ningún servidor encendido: el .apk se genera una vez y se reparte a mano.
+
+Puedes hacer todo esto desde el navegador de la PC del trabajo, o incluso desde
+tu celular o tu PC de casa si en el trabajo bloquean GitHub.
+
+--------------------------------------------------------------------
+ MÉTODO RECOMENDADO: GitHub Actions (gratis, sin instalar nada)
+--------------------------------------------------------------------
+
+1) Crea una cuenta gratuita en https://github.com  (solo correo y contraseña).
+
+2) Crea un repositorio:
+   - Botón "+" arriba a la derecha → "New repository".
+   - Nombre: lector-aap  → puede ser "Private" (privado) → "Create repository".
+
+3) Sube el proyecto:
+   - En el repo vacío: "uploading an existing file".
+   - Arrastra el CONTENIDO de la carpeta LectorAAP (todos los archivos y carpetas,
+     incluida la carpeta oculta .github). Lo más fácil: selecciona todo dentro de
+     LectorAAP y arrástralo. Luego "Commit changes".
+   - IMPORTANTE: que en el repo quede visible la carpeta ".github/workflows" con el
+     archivo "build-apk.yml". Si no la ves, vuelve a subir esa carpeta.
+
+4) La compilación arranca sola. Ve a la pestaña "Actions":
+   - Verás un trabajo llamado "Compilar APK" en ejecución (círculo amarillo).
+   - Espera 2–4 minutos hasta que aparezca el check verde.
+   - (Si pide "I understand my workflows, enable them", acéptalo.)
+
+5) Descarga el APK:
+   - Entra al trabajo terminado (el de check verde).
+   - Abajo, en "Artifacts", clic en "lector-aap-apk" → se descarga un .zip.
+   - Descomprímelo: dentro está "app-debug.apk".
+
+6) Reparte ese app-debug.apk a tus compañeros (WhatsApp, correo, cable, Drive).
+   En cada teléfono: abrir el archivo e instalar; si pide permiso, activar
+   "Instalar apps de orígenes desconocidos". Listo, funciona sin internet.
+
+   Para volver a generar el APK luego de un cambio: pestaña "Actions" →
+   "Compilar APK" → botón "Run workflow".
+
+--------------------------------------------------------------------
+ ALTERNATIVA: Android Studio (si en otra PC SÍ puedes instalar)
+--------------------------------------------------------------------
+   - Instala Android Studio (gratis) → Open → carpeta LectorAAP →
+     Build → Build APK(s). El .apk queda en:
+     app/build/outputs/apk/debug/app-debug.apk
+
+--------------------------------------------------------------------
+ DATOS DEL PROYECTO
+--------------------------------------------------------------------
+ - applicationId: pe.aap.lector   |  minSdk 24 (Android 7+)  |  targetSdk 34
+ - El lector está en: app/src/main/assets/index.html
+ - La cámara funciona offline (WebViewAssetLoader sirve los archivos como
+   https://appassets.androidplatform.net, contexto seguro que exige la cámara).
+ - El APK "debug" es válido para uso interno: se instala y funciona igual.
+   Solo necesitarías una versión "release" firmada si algún día lo subes a Play Store.
+ - Marca AAP: navy #002856, celeste #35bde9. Tipografía Mulish (alternativa libre a
+   Museo Sans; sin internet cae a la fuente del sistema).

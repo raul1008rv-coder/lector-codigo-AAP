@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#002856">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Lector de Solicitudes — AAP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;500;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ===== Paleta AAP (Brandbook) ===== */
+  :root{
+    --navy:#002856;        /* primario */
+    --navy-2:#013a78;      /* navy + luz */
+    --navy-3:#0a4e94;
+    --cyan:#35bde9;        /* acento */
+    --blue-200:#c2e4f7;
+    --blue-50:#e2f2fb;
+    --ink:#1b1b1b;         /* neutral black */
+    --red:#e94d4e;         /* secundario */
+    --green:#67b549;       /* secundario */
+    --orange:#ffa410;      /* secundario */
+    --line:rgba(194,228,247,.16);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:"Mulish","Nunito Sans",system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--navy); color:var(--blue-50);
+    font-family:var(--sans); font-weight:500;
+    display:flex; flex-direction:column; min-height:100dvh;
+    padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  }
+
+  /* ===== Encabezado de marca ===== */
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 16px 12px; background:var(--navy);
+    border-bottom:1px solid var(--line);
+  }
+  .brand-mark{display:flex;align-items:flex-end;gap:7px;flex:none}
+  .brand-mark .bars{display:flex;gap:3px;align-items:flex-end;height:24px}
+  .brand-mark .bars i{width:3px;background:var(--blue-50);border-radius:1px}
+  .brand-mark .bars i:nth-child(2){background:var(--cyan);height:24px}
+  .brand-mark .bars i:nth-child(1){height:18px}
+  .brand-mark .bars i:nth-child(3){height:22px}
+  .brand-mark .bars i:nth-child(4){height:14px}
+  .brand-mark .bars i:nth-child(5){height:20px}
+  .brand-mark .word{font-weight:900;font-size:22px;letter-spacing:.5px;color:#fff;line-height:1}
+  .brand-txt{flex:1;min-width:0}
+  .brand-txt h1{font-size:15px;font-weight:900;margin:0;color:#fff;line-height:1.1}
+  .brand-txt p{font-size:10.5px;font-weight:500;margin:2px 0 0;color:var(--blue-200);letter-spacing:.4px;text-transform:uppercase}
+  .live-dot{width:9px;height:9px;border-radius:50%;background:var(--blue-200);opacity:.4;flex:none;transition:.2s}
+  .live-dot.on{background:var(--green);opacity:1;box-shadow:0 0 0 4px rgba(103,181,73,.22)}
+
+  .banner{background:#3a1f00;color:var(--orange);font-size:12.5px;padding:10px 16px;line-height:1.45;display:none}
+  .banner.show{display:block}
+  .banner b{color:#fff}
+
+  /* ===== Visor de cámara ===== */
+  .stage{position:relative;background:#001226;aspect-ratio:4/3;max-height:42dvh;overflow:hidden}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .reticle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .frame{position:relative;width:80%;height:54%}
+  .frame i{position:absolute;width:26px;height:26px;border:3px solid var(--cyan)}
+  .frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}
+  .frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+  .frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}
+  .frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+  .scanline{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+    box-shadow:0 0 14px 1px var(--cyan);top:0;animation:sweep 2.1s ease-in-out infinite}
+  @keyframes sweep{0%,100%{top:3%}50%{top:97%}}
+  .stage.flash{animation:flash .4s ease}
+  @keyframes flash{0%{box-shadow:inset 0 0 0 0 var(--green)}30%{box-shadow:inset 0 0 0 7px var(--green)}100%{box-shadow:inset 0 0 0 0 var(--green)}}
+  .counter{position:absolute;top:10px;left:10px;background:rgba(0,40,86,.78);border:1px solid var(--cyan);
+    border-radius:12px;padding:7px 12px;display:flex;align-items:baseline;gap:7px;backdrop-filter:blur(3px)}
+  .counter b{font-family:var(--mono);font-size:22px;font-weight:900;color:var(--cyan);line-height:1}
+  .counter span{font-size:11px;color:var(--blue-200);text-transform:uppercase;letter-spacing:.4px}
+  .cam-tools{position:absolute;top:10px;right:10px;display:flex;gap:8px}
+  .iconbtn{width:42px;height:42px;border-radius:12px;border:1px solid rgba(194,228,247,.28);
+    background:rgba(0,18,38,.5);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
+  .iconbtn:active{transform:scale(.94)} .iconbtn.on{background:var(--cyan);color:var(--navy);border-color:var(--cyan)}
+  .stage.off video,.stage.off .reticle,.stage.off .counter,.stage.off .cam-tools{display:none}
+  .placeholder{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--blue-200);gap:10px;padding:24px;text-align:center}
+  .stage.off .placeholder{display:flex}
+  .placeholder svg{width:48px;height:48px;opacity:.6}
+  .hint{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;color:#dff;text-shadow:0 1px 4px #000;padding:0 16px}
+
+  /* ===== Última lectura ===== */
+  .capture{padding:12px 16px;background:var(--navy-2);border-bottom:1px solid var(--line)}
+  .capture .lbl{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--blue-200);font-weight:700}
+  .capture .val{font-family:var(--mono);font-size:27px;font-weight:700;letter-spacing:1px;color:#fff;margin:3px 0 2px;word-break:break-all;line-height:1.1}
+  .capture .val.empty{color:var(--blue-200);opacity:.5;font-size:17px;font-family:var(--sans);font-weight:500}
+  .capture .meta{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--blue-200);min-height:18px}
+  .tag{font-family:var(--mono);font-size:11px;background:rgba(53,189,233,.16);color:var(--cyan);padding:2px 7px;border-radius:6px;letter-spacing:.4px;font-weight:700}
+
+  /* ===== Controles ===== */
+  .controls{padding:13px 16px;display:flex;gap:10px;background:var(--navy)}
+  .btn{flex:1;border:0;border-radius:14px;padding:16px;font-size:16px;font-weight:900;letter-spacing:.3px;font-family:var(--sans);color:var(--navy);background:var(--cyan)}
+  .btn:active{transform:scale(.985)} .btn.stop{background:var(--red);color:#fff}
+  .btn.ghost{flex:none;width:56px;background:transparent;color:var(--blue-50);border:1px solid var(--line);font-size:20px}
+
+  /* ===== Opciones ===== */
+  .options{padding:6px 16px 2px;background:var(--navy);display:flex;flex-direction:column;gap:2px}
+  .opt{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+  .opt:last-child{border-bottom:0}
+  .opt .t{font-size:13.5px;color:var(--blue-50);font-weight:500}
+  .opt .t small{display:block;font-size:11px;color:var(--blue-200);opacity:.75;font-weight:500;margin-top:1px}
+  .sw{position:relative;width:46px;height:27px;border-radius:99px;background:rgba(194,228,247,.22);flex:none;transition:.18s}
+  .sw.on{background:var(--green)} .sw::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.18s}
+  .sw.on::after{left:22px}
+  .lote{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .lote label{font-size:13.5px;color:var(--blue-50);flex:none}
+  .lote input{flex:1;background:rgba(0,18,38,.5);border:1px solid var(--line);border-radius:10px;color:#fff;
+    padding:9px 11px;font-family:var(--sans);font-size:14px;min-width:0}
+  .lote input::placeholder{color:rgba(194,228,247,.5)}
+
+  /* ===== Sesión / historial ===== */
+  .session{flex:1;overflow:auto;padding:2px 16px 18px;background:var(--navy)}
+  .session .top{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--navy);padding:12px 0 8px;gap:8px}
+  .session .top h2{font-size:12px;font-weight:900;color:var(--blue-200);letter-spacing:.5px;margin:0;text-transform:uppercase}
+  .acts{display:flex;gap:7px}
+  .miniact{font-size:12px;font-weight:700;color:var(--navy);background:var(--cyan);border:0;padding:8px 12px;border-radius:10px}
+  .miniact.sec{background:transparent;color:var(--blue-200);border:1px solid var(--line)}
+  .miniact:active{transform:scale(.96)}
+  .item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .item .num{flex:none;width:26px;font-family:var(--mono);font-size:12px;color:var(--cyan);text-align:right;font-weight:700}
+  .item .body{flex:1;min-width:0}
+  .item .code{font-family:var(--mono);font-size:17px;font-weight:700;color:#fff;word-break:break-all}
+  .item .sub{font-size:11px;color:var(--blue-200);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+  .item .copy{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--blue-50);font-size:16px}
+  .item .copy:active{transform:scale(.92)}
+  .empty-state{color:var(--blue-200);opacity:.7;font-size:14px;text-align:center;padding:30px 12px;line-height:1.5}
+
+  .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+    background:#fff;color:var(--navy);padding:11px 16px;border-radius:11px;font-size:13px;font-weight:700;
+    opacity:0;transition:.25s;pointer-events:none;z-index:40;max-width:88vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  footer{text-align:center;font-size:10.5px;color:var(--blue-200);opacity:.55;padding:4px 0 10px;letter-spacing:.3px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand-mark">
+      <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="word">AAP</div>
+    </div>
+    <div class="brand-txt">
+      <h1>Lector de Solicitudes</h1>
+      <p>Asociación Automotriz del Perú</p>
+    </div>
+    <span class="live-dot" id="dot"></span>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="stage off" id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
+      <div>Pulsa <b>Iniciar</b> y apunta al código de barras.<br>En modo masivo puedes leer uno tras otro sin detenerte.</div>
+    </div>
+    <div class="reticle"><div class="frame"><i></i><i></i><i></i><i></i><div class="scanline"></div></div></div>
+    <div class="counter"><b id="counter">0</b><span>leídos</span></div>
+    <div class="cam-tools">
+      <button class="iconbtn" id="torchBtn" title="Linterna" hidden>⚡</button>
+      <button class="iconbtn" id="switchBtn" title="Cambiar cámara" hidden>⟳</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="capture">
+    <div class="lbl">Último código</div>
+    <div class="val empty" id="lastVal">—</div>
+    <div class="meta" id="lastMeta"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="scanBtn">Iniciar</button>
+    <button class="btn ghost" id="copyLastBtn" title="Copiar último">⧉</button>
+  </div>
+
+  <div class="options">
+    <div class="lote">
+      <label>Lote</label>
+      <input id="lote" type="text" placeholder="Ej. CUSCO-23ABR — opcional">
+    </div>
+    <div class="opt">
+      <div class="t">Modo masivo<small>Sigue leyendo sin detenerse tras cada código</small></div>
+      <div class="sw on" id="swBulk"></div>
+    </div>
+    <div class="opt">
+      <div class="t">Evitar repetidos<small>No registra dos veces el mismo código en la sesión</small></div>
+      <div class="sw on" id="swDedup"></div>
+    </div>
+    <div class="opt">
+      <div class="t">Solo N° de solicitud<small>Quita el prefijo «03» de los códigos de solicitud</small></div>
+      <div class="sw" id="swStrip"></div>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="top">
+      <h2>Sesión (<span id="count">0</span>)</h2>
+      <div class="acts">
+        <button class="miniact" id="csvBtn">Exportar CSV</button>
+        <button class="miniact sec" id="copyAllBtn">Copiar</button>
+        <button class="miniact sec" id="clearBtn">Nueva sesión</button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </div>
+
+  <footer>Asociación Automotriz del Perú · Fundada en 1926</footer>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const stage=$("#stage"),video=$("#video"),scanBtn=$("#scanBtn"),dot=$("#dot"),
+        lastVal=$("#lastVal"),lastMeta=$("#lastMeta"),listEl=$("#list"),countEl=$("#count"),
+        counterEl=$("#counter"),toastEl=$("#toast"),hint=$("#hint"),banner=$("#banner"),
+        torchBtn=$("#torchBtn"),switchBtn=$("#switchBtn"),loteEl=$("#lote");
+  const swBulk=$("#swBulk"),swDedup=$("#swDedup"),swStrip=$("#swStrip");
+
+  const FORMATS=["code_128","ean_13","ean_8","code_39","code_93","itf","codabar","upc_a","upc_e","qr_code","data_matrix","pdf417","aztec"];
+  const FMT={code_128:"Code 128",ean_13:"EAN-13",ean_8:"EAN-8",code_39:"Code 39",code_93:"Code 93",itf:"ITF",codabar:"Codabar",upc_a:"UPC-A",upc_e:"UPC-E",qr_code:"QR",data_matrix:"Data Matrix",pdf417:"PDF417",aztec:"Aztec"};
+  const nice=f=>FMT[f]||(f||"").toUpperCase();
+
+  let scanning=false,stream=null,engine=null,detector=null,zx=null,track=null,
+      torchOn=false,devices=[],devIdx=0,rafId=null,lastV="",lastT=0;
+  const session=[];               // {value, raw, format, date, time}
+  const seen=new Set();
+  let opt={bulk:true,dedup:true,strip:false};
+
+  /* toggles */
+  function bindSw(el,key){ el.onclick=()=>{ opt[key]=!opt[key]; el.classList.toggle("on",opt[key]);
+    if(key==="strip") rerenderValues(); }; }
+  bindSw(swBulk,"bulk"); bindSw(swDedup,"dedup"); bindSw(swStrip,"strip");
+
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add("show");
+    clearTimeout(toast._t); toast._t=setTimeout(()=>toastEl.classList.remove("show"),1500); }
+  function showBanner(h){ banner.innerHTML=h; banner.classList.add("show"); }
+
+  function beep(ok){
+    try{ const C=window.AudioContext||window.webkitAudioContext; if(!C)return;
+      beep.ctx=beep.ctx||new C(); const c=beep.ctx,o=c.createOscillator(),g=c.createGain();
+      o.type="square"; o.frequency.value=ok?1245:420;
+      g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.22,c.currentTime+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.14);
+      o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+.15);
+    }catch(e){} }
+  function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms||55); }
+  async function copy(t){ try{ await navigator.clipboard.writeText(t); return true; }
+    catch(e){ try{ const x=document.createElement("textarea"); x.value=t; x.style.position="fixed"; x.style.opacity="0";
+      document.body.appendChild(x); x.select(); document.execCommand("copy"); x.remove(); return true; }catch(_){ return false; } } }
+
+  const display=raw=> opt.strip && /^03\d+$/.test(raw) ? raw.slice(2) : raw;
+
+  function register(raw,format){
+    if(!raw) return;
+    const now=Date.now();
+    if(raw===lastV && now-lastT<2200) return;
+    lastV=raw; lastT=now;
+
+    if(opt.dedup && seen.has(raw)){
+      beep(false);
+      lastMeta.innerHTML='<span style="color:var(--orange)">Ya registrado en esta sesión</span>';
+      return;
+    }
+    seen.add(raw);
+    beep(true); vibrate();
+    stage.classList.remove("flash"); void stage.offsetWidth; stage.classList.add("flash");
+
+    const d=new Date();
+    const rec={ raw, value:display(raw), format,
+      date:d.toLocaleDateString("es-PE"),
+      time:d.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) };
+    session.unshift(rec);
+    lastVal.textContent=rec.value; lastVal.classList.remove("empty");
+    lastMeta.innerHTML='<span class="tag">'+nice(format)+'</span><span>'+rec.time+'</span>';
+    render();
+
+    if(!opt.bulk){ stop(); }      // modo simple: detiene tras 1 lectura
+  }
+
+  function rerenderValues(){
+    session.forEach(r=>r.value=display(r.raw));
+    if(lastV) lastVal.textContent=display(lastV);
+    render();
+  }
+
+  function render(){
+    const n=session.length;
+    countEl.textContent=n; counterEl.textContent=n;
+    if(!n){ listEl.innerHTML='<div class="empty-state">Aún no hay lecturas.<br>Inicia el escáner para comenzar la sesión.</div>'; return; }
+    listEl.innerHTML="";
+    session.forEach((r,i)=>{
+      const row=document.createElement("div"); row.className="item";
+      row.innerHTML='<div class="num">'+(n-i)+'</div><div class="body"><div class="code"></div>'+
+        '<div class="sub"><span class="tag">'+nice(r.format)+'</span><span>'+r.time+'</span></div></div>'+
+        '<button class="copy">⧉</button>';
+      row.querySelector(".code").textContent=r.value;
+      row.querySelector(".copy").onclick=async()=>{ if(await copy(r.value)) toast("Copiado: "+r.value); };
+      listEl.appendChild(row);
+    });
+  }
+
+  /* ---- motor ---- */
+  async function pickEngine(){
+    if("BarcodeDetector" in window){
+      try{ const sup=await window.BarcodeDetector.getSupportedFormats();
+        const use=FORMATS.filter(f=>sup.includes(f));
+        if(use.length){ detector=new window.BarcodeDetector({formats:use}); engine="native"; return; } }catch(e){}
+    }
+    engine="zxing"; await loadZx();
+  }
+  function loadZx(){ return new Promise((res,rej)=>{ if(window.ZXing){res();return;}
+    hint.textContent="Cargando motor…";
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+    s.onload=()=>res(); s.onerror=()=>rej(new Error("Sin conexión para el motor de respaldo."));
+    document.head.appendChild(s); }); }
+
+  async function listCams(){ try{ const a=await navigator.mediaDevices.enumerateDevices();
+    devices=a.filter(d=>d.kind==="videoinput"); if(devices.length>1) switchBtn.hidden=false; }catch(e){} }
+
+  async function startNative(){
+    const c={audio:false, video: devices.length?{deviceId:{exact:devices[devIdx].deviceId}}:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}};
+    stream=await navigator.mediaDevices.getUserMedia(c);
+    video.srcObject=stream; await video.play(); track=stream.getVideoTracks()[0]; setupTorch();
+  }
+  function setupTorch(){ torchOn=false; torchBtn.classList.remove("on");
+    try{ const caps=track.getCapabilities?track.getCapabilities():{}; torchBtn.hidden=!("torch" in caps); }catch(e){ torchBtn.hidden=true; } }
+  async function nativeLoop(){ if(!scanning)return;
+    try{ const r=await detector.detect(video); if(r&&r.length) register(r[0].rawValue,r[0].format); }catch(e){}
+    rafId=setTimeout(nativeLoop,110); }
+  async function startZx(){
+    const h=new Map(),F=ZXing.BarcodeFormat;
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[F.CODE_128,F.EAN_13,F.EAN_8,F.CODE_39,F.CODE_93,F.ITF,F.CODABAR,F.UPC_A,F.UPC_E,F.QR_CODE,F.DATA_MATRIX,F.PDF_417,F.AZTEC]);
+    zx=new ZXing.BrowserMultiFormatReader(h,300);
+    const id=devices.length?devices[devIdx].deviceId:undefined;
+    await zx.decodeFromVideoDevice(id,video,res=>{ if(res){ const f=(ZXing.BarcodeFormat[res.getBarcodeFormat()]||"").toLowerCase(); register(res.getText(),f); } });
+    try{ track=video.srcObject.getVideoTracks()[0]; setupTorch(); }catch(e){}
+  }
+
+  async function start(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast("Este navegador no permite la cámara."); return; }
+    if(false) showBanner('<b>La cámara necesita HTTPS.</b> Súbelo a un hosting (Netlify Drop / GitHub Pages) o usa la app instalada.');
+    scanBtn.disabled=true; hint.textContent="Iniciando cámara…";
+    try{
+      if(!engine) await pickEngine();
+      if(engine==="native"){ await startNative(); }
+      else{ if(!devices.length){ try{ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}); s.getTracks().forEach(t=>t.stop()); }catch(e){} } await listCams(); await startZx(); }
+      await listCams();
+      scanning=true; stage.classList.remove("off"); dot.classList.add("on");
+      scanBtn.textContent="Detener"; scanBtn.classList.add("stop");
+      hint.textContent=opt.bulk?"Modo masivo: lee uno tras otro":"Buscando código…";
+      if(engine==="native") nativeLoop();
+    }catch(err){
+      toast(err&&err.name==="NotAllowedError"?"Permiso de cámara denegado.":(err.message||"No se pudo iniciar la cámara.")); hint.textContent="";
+    }finally{ scanBtn.disabled=false; }
+  }
+  function stop(){
+    scanning=false; if(rafId){clearTimeout(rafId);rafId=null;}
+    try{ if(zx) zx.reset(); }catch(e){}
+    try{ if(stream) stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+    try{ if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; } }catch(e){}
+    stream=null; track=null;
+    stage.classList.add("off"); dot.classList.remove("on");
+    scanBtn.textContent="Iniciar"; scanBtn.classList.remove("stop"); torchBtn.hidden=true; hint.textContent="";
+  }
+
+  scanBtn.onclick=()=>scanning?stop():start();
+  switchBtn.onclick=async()=>{ if(!devices.length)return; devIdx=(devIdx+1)%devices.length; const w=scanning; stop(); if(w) await start(); };
+  torchBtn.onclick=async()=>{ if(!track)return; try{ torchOn=!torchOn; await track.applyConstraints({advanced:[{torch:torchOn}]}); torchBtn.classList.toggle("on",torchOn); }catch(e){ toast("Linterna no disponible."); } };
+
+  $("#copyLastBtn").onclick=async()=>{ if(!lastV){toast("Aún no hay lectura.");return;} if(await copy(display(lastV))) toast("Copiado"); };
+  $("#copyAllBtn").onclick=async()=>{ if(!session.length){toast("Sesión vacía.");return;}
+    if(await copy(session.map(r=>r.value).join("\n"))) toast(session.length+" códigos copiados"); };
+  $("#csvBtn").onclick=()=>{ if(!session.length){toast("Sesión vacía.");return;}
+    const lote=(loteEl.value||"").trim();
+    let csv="n,codigo,lote,formato,fecha,hora\n";
+    const tot=session.length;
+    session.forEach((r,i)=>{ csv+=[tot-i,'"'+r.value.replace(/"/g,'""')+'"','"'+lote.replace(/"/g,'""')+'"',nice(r.format),r.date,r.time].join(",")+"\n"; });
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    const tag=lote?lote.replace(/[^\w\-]+/g,"_")+"_":"";
+    a.download="lecturas_"+tag+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast("CSV exportado ("+session.length+")"); };
+  $("#clearBtn").onclick=()=>{ if(!session.length){toast("Sesión vacía.");return;}
+    if(confirm("¿Iniciar una nueva sesión? Se borrarán las "+session.length+" lecturas actuales.")){
+      session.length=0; seen.clear(); lastV=""; lastVal.textContent="—"; lastVal.classList.add("empty"); lastMeta.innerHTML=""; render(); } };
+
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden&&scanning) stop(); });
+  render();
+})();
+</script>
+</body>
+</html>

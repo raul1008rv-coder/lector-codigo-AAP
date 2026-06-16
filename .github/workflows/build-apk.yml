@@ -10,6 +10,9 @@ jobs:
       - name: Descargar el proyecto
         uses: actions/checkout@v4
 
+      - name: Ver estructura del repo
+        run: ls -R | head -120
+
       - name: Instalar Java 17
         uses: actions/setup-java@v4
         with:
@@ -22,12 +25,15 @@ jobs:
           gradle-version: '8.7'
 
       - name: Compilar el APK (debug)
-        working-directory: LectorAAP
-        run: gradle assembleDebug --stacktrace
+        run: |
+          PROJ=$(dirname "$(find . -name settings.gradle -o -name settings.gradle.kts | head -n1)")
+          echo "Proyecto detectado en: $PROJ"
+          cd "$PROJ"
+          gradle assembleDebug --stacktrace
 
       - name: Publicar el APK como descarga
         uses: actions/upload-artifact@v4
         with:
           name: lector-aap-apk
-          path: LectorAAP/app/build/outputs/apk/debug/app-debug.apk
+          path: '**/app-debug.apk'
           if-no-files-found: error
